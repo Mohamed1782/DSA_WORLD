@@ -21,7 +21,7 @@ class MergeSortGame:
             widget.destroy()
 
         self.master.title("DSA World - Merge Sort")
-        self.master.geometry("800x800")
+        self.master.geometry("800x900")
         self.master.resizable(False, False)
 
         # Color palette
@@ -103,6 +103,42 @@ class MergeSortGame:
             pady=5
         )
         self.timer_label.pack()
+
+        # Custom input frame
+        input_frame = tk.Frame(self.main_frame, bg=self.COLORS["black"], pady=10)
+        input_frame.pack()
+
+        input_label = tk.Label(
+            input_frame,
+            text="Enter array (comma-separated):",
+            font=("Courier", 10),
+            bg=self.COLORS["black"],
+            fg=self.COLORS["white"]
+        )
+        input_label.grid(row=0, column=0, padx=10)
+
+        self.array_input = tk.Entry(
+            input_frame,
+            font=("Courier", 10),
+            width=30,
+            bg=self.COLORS["dark_blue"],
+            fg=self.COLORS["white"],
+            insertbackground=self.COLORS["cyan"]
+        )
+        self.array_input.grid(row=0, column=1, padx=10)
+        self.array_input.insert(0, "50, 30, 70, 20, 80")
+
+        self.load_array_button = tk.Button(
+            input_frame,
+            text="LOAD",
+            font=("Courier", 10, "bold"),
+            bg=self.COLORS["blue"],
+            fg=self.COLORS["white"],
+            padx=10,
+            pady=3,
+            command=lambda: [self.play_button_sound(), self.load_custom_array()]
+        )
+        self.load_array_button.grid(row=0, column=2, padx=10)
 
         # Control buttons frame
         button_frame = tk.Frame(self.main_frame, bg=self.COLORS["black"], pady=15)
@@ -208,6 +244,40 @@ class MergeSortGame:
         self.timer_label.config(text="Time: 00:00.00")
         self.status_label.config(text="Array generated! Ready to sort.", fg=self.COLORS["green"])
         self.draw_array()
+
+    def load_custom_array(self):
+        """Load a custom array from user input"""
+        if self.sorting:
+            messagebox.showwarning("Busy", "Wait for the current sort to finish!")
+            return
+        
+        input_text = self.array_input.get().strip()
+        
+        if not input_text:
+            messagebox.showwarning("Input Error", "Please enter array values!")
+            return
+        
+        try:
+            # Parse comma-separated values
+            self.array = [int(x.strip()) for x in input_text.split(",")]
+            
+            if len(self.array) == 0:
+                messagebox.showwarning("Input Error", "Please enter at least one value!")
+                return
+            
+            # Validate array values are positive
+            if any(x < 0 for x in self.array):
+                messagebox.showwarning("Input Error", "Please use positive numbers only!")
+                return
+            
+            self.array_colors = [self.COLORS["light_blue"] for _ in self.array]
+            self.sorted_indices = set()
+            self.timer.reset()
+            self.timer_label.config(text="Time: 00:00.00")
+            self.status_label.config(text=f"Custom array loaded! {len(self.array)} elements. Ready to sort.", fg=self.COLORS["green"])
+            self.draw_array()
+        except ValueError:
+            messagebox.showerror("Input Error", "Please enter valid numbers separated by commas!\nExample: 50, 30, 70, 20, 80")
 
     def draw_array(self):
         """Draw the current state of the array"""
