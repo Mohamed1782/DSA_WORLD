@@ -67,6 +67,15 @@ class SortingMenuScreen:
             command=lambda: self.select_option("Merge Sort")
         )
 
+        self.hybrid_sort_button = tk.Button(
+            self.master,
+            text="Hybrid Sort",
+            font=button_font,
+            bg="#FF6B9D",
+            fg="white",
+            command=lambda: self.select_option("Hybrid Sort")
+        )
+
         self.back_button = tk.Button(
             self.master,
             text="Back",
@@ -81,7 +90,8 @@ class SortingMenuScreen:
 
         self.canvas.create_window(center_x, start_y, window=self.insertion_sort_button, width=200, height=50)
         self.canvas.create_window(center_x, start_y + 80, window=self.merge_sort_button, width=200, height=50)
-        self.canvas.create_window(center_x, start_y + 160, window=self.back_button, width=200, height=50)
+        self.canvas.create_window(center_x, start_y + 160, window=self.hybrid_sort_button, width=200, height=50)
+        self.canvas.create_window(center_x, start_y + 240, window=self.back_button, width=200, height=50)
 
     def play_sound(self):
         if self.button_sound:
@@ -102,6 +112,12 @@ class SortingMenuScreen:
             spec.loader.exec_module(merge_sort_module)
             self.canvas.destroy()
             merge_sort_module.MergeSortGame(self.master, go_back_callback=self.go_back_callback)
+        elif option == "Hybrid Sort":
+            spec = importlib.util.spec_from_file_location("hybrid_sort_module", os.path.join("sorting", "hybrid_sort.py"))
+            hybrid_sort_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(hybrid_sort_module)
+            self.canvas.destroy()
+            hybrid_sort_module.HybridSortGame(self.master, go_back_callback=self.go_back_callback)
 
     def go_to_mainMenu(self):
         self.play_sound()  # Play button sound when going back
