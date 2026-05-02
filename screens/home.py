@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import os
-from screens.menu import MenuScreen
+from screens.MainMenu import MainMenuScreen
 import pygame  # For button sounds
 
 class HomeScreen:
@@ -75,7 +75,7 @@ class HomeScreen:
         self.start_button.destroy()
         self.about_button.destroy()
         self.exit_button.destroy()
-        MenuScreen(self.master, self.__init__)
+        MainMenuScreen(self.master, self.__init__)
 
     def show_about(self):
         about_win = tk.Toplevel(self.master)

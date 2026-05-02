@@ -386,8 +386,8 @@ class CircularQueue:
         
         # Call the go_back_callback to return to menu
         if self.go_back_callback:
-            from screens.menu import MenuScreen
-            MenuScreen(self.root, self.go_back_callback)
+            from screens.DSAmenu import DSAMenuScreen
+            DSAMenuScreen(self.root, self.go_back_callback)
 
 def main():
     root = tk.Tk()
