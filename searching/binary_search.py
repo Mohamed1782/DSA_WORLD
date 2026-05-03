@@ -45,7 +45,12 @@ class BinarySearchGame:
         self.array_colors = []
         self.sorting = False
         self.sorted_indices = set()
+
+        # ── Single timer for BOTH sort + search ─────────────────
         self.timer = SortingTimer()
+        self.total_elapsed = 0.0  # accumulated time across sort and search
+        self.is_sorter = False    # track if array has been sorted
+        # ────────────────────────────────────────────────────────
 
         # ── Binary Search state ──────────────────────────────
         self.searching = False
@@ -103,7 +108,7 @@ class BinarySearchGame:
         )
         self.canvas.pack(padx=10, pady=10)
 
-        # Timer display
+        # Timer display (shows total time: sort + search)
         self.timer_label = tk.Label(
             self.main_frame,
             text="Time: 00:00.00",
@@ -290,10 +295,10 @@ class BinarySearchGame:
 
         # ── Instructions ───────────────────────────────────
         instruction_text = (
-            "INSTRUCTIONS:\\n"
-            "1. Click GENERATE to create a random array\\n"
-            "2. Click SORT to sort the array (required for binary search)\\n"
-            "3. Enter a number and click SEARCH — watch Binary Search in action!\\n"
+            "INSTRUCTIONS:\n"
+            "1. Click GENERATE to create a random array\n"
+            "2. Click SORT to sort the array (required for binary search)\n"
+            "3. Enter a number and click SEARCH — watch Binary Search in action!\n"
             "   Yellow = mid element | Green = found | Red = eliminated"
         )
 
@@ -322,12 +327,21 @@ class BinarySearchGame:
         self.back_button.pack(pady=10)
 
     def update_timer_display(self):
-        """Update the timer display during sorting/searching"""
+        """Update the timer display — shows total accumulated time"""
         if self.timer.is_running:
-            elapsed = self.timer.get_elapsed()
-            formatted_time = self.timer.format_time(elapsed)
+            current_session = self.timer.get_elapsed()
+            total = self.total_elapsed + current_session
+            formatted_time = self.timer.format_time(total)
             self.timer_label.config(text=f"Time: {formatted_time}")
             self.master.update()
+
+    def _update_final_timer(self):
+        """Stop timer and add current session to total"""
+        if self.timer.is_running:
+            self.timer.stop()
+            self.total_elapsed += self.timer.get_total_time()
+        formatted = self.timer.format_time(self.total_elapsed)
+        self.timer_label.config(text=f"Time: {formatted}")
 
     def generate_random_array(self):
         """Generate a random array"""
@@ -339,8 +353,13 @@ class BinarySearchGame:
         self.array_colors = [self.COLORS["light_blue"] for _ in self.array]
         self.sorted_indices = set()
         self._reset_search_state()
+
+        # Reset total time when generating new array
+        self.total_elapsed = 0.0
+        self.is_sorted = False
         self.timer.reset()
         self.timer_label.config(text="Time: 00:00.00")
+
         self.status_label.config(text="Array generated! Click SORT before searching.", fg=self.COLORS["green"])
         self.draw_array()
 
@@ -367,15 +386,20 @@ class BinarySearchGame:
             self.array_colors = [self.COLORS["light_blue"] for _ in self.array]
             self.sorted_indices = set()
             self._reset_search_state()
+
+            # Reset total time when loading new array
+            self.total_elapsed = 0.0
+            self.is_sorted = False
             self.timer.reset()
             self.timer_label.config(text="Time: 00:00.00")
+
             self.status_label.config(
                 text=f"Custom array loaded! {len(self.array)} elements. Click SORT before searching.",
                 fg=self.COLORS["green"]
             )
             self.draw_array()
         except ValueError:
-            messagebox.showerror("Input Error", "Please enter valid numbers separated by commas!\\nExample: 50, 30, 70, 20, 80")
+            messagebox.showerror("Input Error", "Please enter valid numbers separated by commas!\nExample: 50, 30, 70, 20, 80")
 
     def draw_array(self):
         """Draw the current state of the array with binary search pointers"""
@@ -403,7 +427,6 @@ class BinarySearchGame:
                 width=1
             )
 
-            # Draw value text for small arrays
             if len(self.array) <= 20:
                 self.canvas.create_text(
                     (x1 + x2) / 2,
@@ -413,7 +436,6 @@ class BinarySearchGame:
                     font=("Courier", 8)
                 )
 
-            # Draw pointer labels for binary search (L, R, M)
             if self.searching or self.search_result_index is not None:
                 labels = []
                 if i == self.bs_left:
@@ -455,27 +477,25 @@ class BinarySearchGame:
 
         self.status_label.config(text="Sorting in progress...", fg=self.COLORS["yellow"])
 
-        # Start timer
+        # Start timer (continues from any previous accumulated time)
         self.timer.reset()
         self.timer.start()
 
-        # Make a copy for sorting
         self.array_copy = self.array.copy()
         self.merge_sort_animate(0, len(self.array_copy) - 1, "Dividing...")
 
-        # Stop timer
-        self.timer.stop()
+        # Stop timer and add to total
+        self._update_final_timer()
 
-        # Mark all as sorted
         self.array_colors = [self.COLORS["green"] for _ in self.array_colors]
         self.draw_array()
 
-        total_time = self.timer.format_time(self.timer.get_total_time())
-        self.timer_label.config(text=f"Time: {total_time}")
+        formatted = self.timer.format_time(self.total_elapsed)
         self.status_label.config(
-            text=f"Sorted! ✓  Now enter a target and click SEARCH.  [{total_time}]",
+            text=f"Sorted! ✓  Now enter a target and click SEARCH.  [{formatted}]",
             fg=self.COLORS["green"]
         )
+        self.is_sorted = True
         self.sorting = False
         self._set_buttons_state("normal")
 
@@ -484,19 +504,13 @@ class BinarySearchGame:
         if left < right:
             mid = (left + right) // 2
 
-            # Highlight dividing range
             self.highlight_range(left, right, self.COLORS["orange"])
             self.status_label.config(text=f"Dividing: [{left}, {right}]", fg=self.COLORS["orange"])
             self.update_timer_display()
             time.sleep(0.2)
 
-            # Recursively sort left half
             self.merge_sort_animate(left, mid, "Left")
-
-            # Recursively sort right half
             self.merge_sort_animate(mid + 1, right, "Right")
-
-            # Merge the two halves
             self.merge_animate(left, mid, right)
 
     def merge_animate(self, left, mid, right):
@@ -507,7 +521,6 @@ class BinarySearchGame:
         i = j = 0
         k = left
 
-        # Highlight merging range
         self.highlight_range(left, right, self.COLORS["purple"])
         self.status_label.config(text=f"Merging: [{left}, {mid}] + [{mid+1}, {right}]", fg=self.COLORS["purple"])
         self.update_timer_display()
@@ -522,7 +535,6 @@ class BinarySearchGame:
                 j += 1
             k += 1
 
-            # Update visualization
             self.array = self.array_copy.copy()
             self.highlight_range(left, right, self.COLORS["cyan"])
             self.draw_array()
@@ -586,7 +598,7 @@ class BinarySearchGame:
         if self.array != sorted(self.array):
             messagebox.showwarning(
                 "Not Sorted",
-                "Binary Search requires a sorted array!\\nPlease click SORT first."
+                "Binary Search requires a sorted array!\nPlease click SORT first."
             )
             return
 
@@ -606,46 +618,44 @@ class BinarySearchGame:
         self.searching = True
         self._set_buttons_state("disabled")
 
+        # Continue timer from where sort left off (don't reset!)
         self.timer.reset()
         self.timer.start()
 
         result = self._binary_search_animate(target)
 
-        self.timer.stop()
-        total_time = self.timer.format_time(self.timer.get_total_time())
-        self.timer_label.config(text=f"Time: {total_time}")
+        # Stop and add search time to total
+        self._update_final_timer()
 
         self.searching = False
         self.search_result_index = result
         self._set_buttons_state("normal")
 
+        formatted = self.timer.format_time(self.total_elapsed)
+
         if result >= 0:
-            # Highlight found bar in green, rest dimmed
             self.array_colors = [self.COLORS["dark_blue"] for _ in self.array]
             self.array_colors[result] = self.COLORS["green"]
             self.draw_array()
             self.status_label.config(
-                text=f"✓ Found {target} at index {result}!  [{total_time}]",
+                text=f"✓ Found {target} at index {result}!  [Total: {formatted}]",
                 fg=self.COLORS["green"]
             )
-            # Try to play win sound if available
             try:
                 win_sound = pygame.mixer.Sound(os.path.join("assets", "music", "win.mp3"))
                 win_sound.play()
             except Exception:
                 pass
         else:
-            # Flash red on entire array
             self.array_colors = [self.COLORS["red"] for _ in self.array]
             self.draw_array()
             time.sleep(0.4)
             self.array_colors = [self.COLORS["light_blue"] for _ in self.array]
             self.draw_array()
             self.status_label.config(
-                text=f"✗ {target} not found in the array.  [{total_time}]",
+                text=f"✗ {target} not found in the array.  [Total: {formatted}]",
                 fg=self.COLORS["red"]
             )
-            # Try error sound
             try:
                 err_sound = pygame.mixer.Sound(os.path.join("assets", "music", "Error.mp3"))
                 err_sound.play()
@@ -653,17 +663,7 @@ class BinarySearchGame:
                 pass
 
     def _binary_search_animate(self, target):
-        """
-        Animated binary search.
-        Returns the index of target if found, -1 otherwise.
-
-        Color coding during search:
-          light_blue  → active search range
-          dark_blue   → eliminated (outside current range)
-          yellow      → current mid being examined
-          purple      → left / right boundary bars
-          green       → found!
-        """
+        """Animated binary search. Returns index if found, -1 otherwise."""
         left = 0
         right = len(self.array) - 1
         step = 0
@@ -672,21 +672,19 @@ class BinarySearchGame:
             step += 1
             mid = (left + right) // 2
 
-            # Update state so draw_array can draw L/M/R labels
             self.bs_left = left
             self.bs_right = right
             self.bs_mid = mid
 
-            # Color the array
             for i in range(len(self.array)):
                 if i < left or i > right:
-                    self.array_colors[i] = self.COLORS["dark_blue"]   # eliminated
+                    self.array_colors[i] = self.COLORS["dark_blue"]
                 elif i == mid:
-                    self.array_colors[i] = self.COLORS["yellow"]      # mid
+                    self.array_colors[i] = self.COLORS["yellow"]
                 elif i == left or i == right:
-                    self.array_colors[i] = self.COLORS["purple"]      # boundary
+                    self.array_colors[i] = self.COLORS["purple"]
                 else:
-                    self.array_colors[i] = self.COLORS["light_blue"]  # in range
+                    self.array_colors[i] = self.COLORS["light_blue"]
 
             self.draw_array()
             self.status_label.config(
@@ -697,13 +695,11 @@ class BinarySearchGame:
             time.sleep(0.6)
 
             if self.array[mid] == target:
-                # Found!
                 self.array_colors[mid] = self.COLORS["green"]
                 self.bs_mid = mid
                 self.draw_array()
                 return mid
             elif self.array[mid] < target:
-                # Go right — dim the left half
                 for i in range(left, mid + 1):
                     self.array_colors[i] = self.COLORS["red"]
                 self.draw_array()
@@ -714,7 +710,6 @@ class BinarySearchGame:
                 time.sleep(0.4)
                 left = mid + 1
             else:
-                # Go left — dim the right half
                 for i in range(mid, right + 1):
                     self.array_colors[i] = self.COLORS["red"]
                 self.draw_array()
@@ -725,7 +720,11 @@ class BinarySearchGame:
                 time.sleep(0.4)
                 right = mid - 1
 
-        return -1   # not found
+        return -1
+
+    # ═══════════════════════════════════════════════════════
+    #  HELPERS
+    # ═══════════════════════════════════════════════════════
 
     def _reset_search_state(self):
         """Reset binary search state variables"""
@@ -758,8 +757,13 @@ class BinarySearchGame:
         self.array_colors = []
         self.sorted_indices = set()
         self._reset_search_state()
+
+        # Reset everything including total time
+        self.total_elapsed = 0.0
+        self.is_sorted = False
         self.timer.reset()
         self.timer_label.config(text="Time: 00:00.00")
+
         self.status_label.config(text="Reset complete. Generate a new array.", fg=self.COLORS["cyan"])
         self.draw_array()
 
